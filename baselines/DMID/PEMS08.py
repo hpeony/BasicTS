@@ -1,19 +1,16 @@
-# STAEbkp/PEMS08.py
+############################## Import Dependencies ##############################
 import os
-import sys
 from easydict import EasyDict
-sys.path.append(os.path.abspath(__file__ + '/../../..'))
-
-from basicts.metrics import masked_mae, masked_mape, masked_rmse
 from basicts.data import TimeSeriesForecastingDataset
+from basicts.metrics import masked_mae, masked_mape, masked_rmse
 from basicts.runners import SimpleTimeSeriesForecastingRunner
 from basicts.scaler import ZScoreScaler
-from basicts.utils import get_regular_settings, load_adj
-
-from .arch import STAEbkp # 导入我们的新模型
+from basicts.utils import get_regular_settings
+# 导入新的模型架构
+from .arch import DMID
 
 ############################## Hot Parameters ##############################
-# Dataset & Metrics configuration
+# 数据集与评估指标配置
 DATA_NAME = 'PEMS08'
 regular_settings = get_regular_settings(DATA_NAME)
 INPUT_LEN = regular_settings['INPUT_LEN']
@@ -22,35 +19,46 @@ TRAIN_VAL_TEST_RATIO = regular_settings['TRAIN_VAL_TEST_RATIO']
 NORM_EACH_CHANNEL = regular_settings['NORM_EACH_CHANNEL']
 RESCALE = regular_settings['RESCALE']
 NULL_VAL = regular_settings['NULL_VAL']
-# Model architecture and parameters
-MODEL_ARCH = STAEbkp # 使用我们的新模型
 
-# 已修改：更新模型参数以匹配新的 STAEbkp 类
+# 模型架构与参数
+MODEL_ARCH = DMID   # 指定模型为我们新创建的DMID
 MODEL_PARAM = {
+    # 基础参数
     "num_nodes": 170,
-    "in_steps": INPUT_LEN,
-    "out_steps": OUTPUT_LEN,
-    "steps_per_day": 288,
-    "input_dim": 1, # STAEformer的示例中此处为3，但通常只用流量数据作为核心特征，时间特征在嵌入层处理
-    "output_dim": 1,
-    "input_embedding_dim": 24,
-    "tod_embedding_dim": 24,
-    "dow_embedding_dim": 24,
-    "spatial_embedding_dim": 0, # STAEformer 中也为0，未使用
-    "adaptive_embedding_dim": 80,
-    "s_dim": 64, # 新增：外部注意力的记忆维度
-    "feed_forward_dim": 256,
-    "num_heads": 4, # 保留以兼容，但不再使用
-    "num_layers": 3,
-    "dropout": 0.1,
+    "input_len": INPUT_LEN,
+    "input_dim": 3,
+    "embed_dim": 64,          # 时间序列特征嵌入维度
+    "output_len": OUTPUT_LEN,
+    "num_layer": 3,
+    # 时间嵌入参数
+    "if_T_i_D": True,
+    "if_D_i_W": True,
+    "time_of_day_size": 288,
+    "day_of_week_size": 7,
+    "temp_dim_tid": 24,  # 一天中时刻的嵌入维度, 16, 24, 32
+    "temp_dim_diw": 24,  # 一周中日期的嵌入维度, 16, 24, 32
+    # 空间嵌入参数 (核心创新)
+    "if_node": True,                           # 空间嵌入总开关
+    "if_dmid_spatial": True,                   # **True: 开启DMID创新空间嵌入, False: 回退到STID原始嵌入**
+    "use_manifold_similarity": True,           # **True: 在相似性嵌入上使用流形学习, False: 使用普通欧氏空间嵌入**
+    "identity_dim": 32,                        # 确定性身份嵌入的维度, 16, 24, 32,
+    "similarity_dim": 32,                      # 可学习相似性嵌入的维度（投影前）, 24, 32, 64
+    "spatial_combination_method": 'gated_add',    # 嵌入组合方式: 'concat' 或 'gated_add'
+    # STID原始空间嵌入参数 (仅在 if_dmid_spatial 为 False 时生效)
+    "node_dim_stid": 64,
 }
-NUM_EPOCHS = 200 # 增加epoch数量，因为早停会选择最佳模型
+NUM_EPOCHS = 150
 
 ############################## General Configuration ##############################
 CFG = EasyDict()
-CFG.DESCRIPTION = 'STAEbkp on PEMS08'
+CFG.DESCRIPTION = 'DMID model on PEMS08'
 CFG.GPU_NUM = 1
 CFG.RUNNER = SimpleTimeSeriesForecastingRunner
+
+############################## Environment Configuration ##############################
+CFG.ENV = EasyDict()
+CFG.ENV.SEED = 42
+CFG.ENV.DETERMINISTIC = True
 
 ############################## Dataset Configuration ##############################
 CFG.DATASET = EasyDict()
@@ -78,35 +86,52 @@ CFG.MODEL = EasyDict()
 CFG.MODEL.NAME = MODEL_ARCH.__name__
 CFG.MODEL.ARCH = MODEL_ARCH
 CFG.MODEL.PARAM = MODEL_PARAM
-# 已修改：由于模型内部会处理TOD和DOW，FORWARD_FEATURES需要提供所有信息
 CFG.MODEL.FORWARD_FEATURES = [0, 1, 2]
 CFG.MODEL.TARGET_FEATURES = [0]
 
 ############################## Metrics Configuration ##############################
 CFG.METRICS = EasyDict()
-CFG.METRICS.FUNCS = EasyDict({'MAE': masked_mae, 'MAPE': masked_mape, 'RMSE': masked_rmse})
+CFG.METRICS.FUNCS = EasyDict({
+                                'MAE': masked_mae,
+                                'MAPE': masked_mape,
+                                'RMSE': masked_rmse,
+                            })
 CFG.METRICS.TARGET = 'MAE'
 CFG.METRICS.NULL_VAL = NULL_VAL
 
 ############################## Training Configuration ##############################
 CFG.TRAIN = EasyDict()
 CFG.TRAIN.NUM_EPOCHS = NUM_EPOCHS
-# 已修改：添加早停策略
-CFG.TRAIN.EARLY_STOPPING = EasyDict()
-CFG.TRAIN.EARLY_STOPPING.PATIENCE = 20 # 如果验证集MAE在20个epoch内没有改善，则停止训练
 CFG.TRAIN.CKPT_SAVE_DIR = os.path.join(
     'checkpoints',
-    '_'.join([CFG.MODEL.NAME, DATA_NAME])
+    MODEL_ARCH.__name__,    # 使用新的模型名创建文件夹
+    '_'.join([DATA_NAME, str(CFG.TRAIN.NUM_EPOCHS), str(INPUT_LEN), str(OUTPUT_LEN)])
 )
 CFG.TRAIN.LOSS = masked_mae
+
 CFG.TRAIN.OPTIM = EasyDict()
 CFG.TRAIN.OPTIM.TYPE = "Adam"
-CFG.TRAIN.OPTIM.PARAM = { "lr": 0.002, "weight_decay": 0.0001, }
+CFG.TRAIN.OPTIM.PARAM = {
+    "lr": 0.001,
+    "weight_decay": 0.0001
+}
+
 CFG.TRAIN.LR_SCHEDULER = EasyDict()
 CFG.TRAIN.LR_SCHEDULER.TYPE = "MultiStepLR"
-CFG.TRAIN.LR_SCHEDULER.PARAM = { "milestones": [1, 50, 100], "gamma": 0.5 }
+CFG.TRAIN.LR_SCHEDULER.PARAM = {
+    "milestones": [7, 18, 25, 70, 125],
+    "gamma": 0.5
+}
+
+CFG.TRAIN.CLIP_GRAD_PARAM = {
+    'max_norm': 5.0
+}
+
+# --- Early Stopping Strategy ---
+CFG.TRAIN.EARLY_STOPPING_PATIENCE = 20
+
 CFG.TRAIN.DATA = EasyDict()
-CFG.TRAIN.DATA.BATCH_SIZE = 32 # 减小batch size，因为模型可能更复杂
+CFG.TRAIN.DATA.BATCH_SIZE = 64
 CFG.TRAIN.DATA.SHUFFLE = True
 
 ############################## Validation and Test Configuration ##############################
@@ -114,12 +139,12 @@ CFG.VAL = EasyDict()
 CFG.VAL.INTERVAL = 1
 CFG.VAL.DATA = EasyDict()
 CFG.VAL.DATA.BATCH_SIZE = 64
-
 CFG.TEST = EasyDict()
 CFG.TEST.INTERVAL = 1
 CFG.TEST.DATA = EasyDict()
 CFG.TEST.DATA.BATCH_SIZE = 64
 
+############################## Evaluation Configuration ##############################
 CFG.EVAL = EasyDict()
 CFG.EVAL.HORIZONS = [3, 6, 12]
 CFG.EVAL.USE_GPU = True
