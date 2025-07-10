@@ -3,16 +3,17 @@ from torch import nn
 
 # 引用同目录下的模块
 from .mlp import MultiLayerPerceptron
-from .embed import SinusoidalEncoding, SpatialEmbedding
+from .embed import SpatialEmbedding
+
 
 class DMID(nn.Module):
     """
     模型名称: DMID (Deterministic Manifold IDentity)
     设计哲学:
-        1. 保持类似STID的简洁线性模型结构。
-        2. 解决可学习ID嵌入的“不可区分性”缺陷。
-        3. 显式地将节点的“身份”和“相似性”解耦。
-        4. 引入确定性编码和流形学习的数学思想。
+        1. 继承STID的简洁MLP线性模型结构。
+        2. 通过确定性编码和流形学习解决可学习ID嵌入的“不可区分性”理论缺陷。
+        3. 显式地将节点的“身份(Identity)”和“相似性(Similarity)”解耦，并提供灵活的重组机制。
+        4. 时间嵌入部分与STID完全对齐，确保对比的公平性。
     """
 
     def __init__(self, **model_args):
@@ -30,48 +31,55 @@ class DMID(nn.Module):
         self.if_day_in_week = model_args["if_D_i_W"]
         self.if_spatial = model_args["if_node"]
         self.if_dmid_spatial = model_args.get("if_dmid_spatial", False)
+        self.dropout = model_args["dropout"]
 
         # ==================== 2. 空间嵌入模块 (核心创新点) ====================
         self.node_dim = 0
         if self.if_spatial:
             if self.if_dmid_spatial:
+                # 使用我们设计的、解耦的、基于流形的DMID空间嵌入模块
                 identity_dim = model_args["identity_dim"]
                 similarity_dim = model_args["similarity_dim"]
                 combination = model_args["spatial_combination_method"]
                 use_manifold = model_args["use_manifold_similarity"]
                 self.spatial_embedding_layer = SpatialEmbedding(identity_dim, similarity_dim, self.num_nodes,
                                                                 combination, use_manifold)
+                # 计算总的空间嵌入维度
                 self.node_dim = identity_dim + similarity_dim if combination == 'concat' else similarity_dim
             else:
-                print("Using STID's original spatial embedding.")
+                # 回退到STID的原始空间嵌入方式 (用于消融实验对比)
+                print("Fallback: Using STID's original spatial embedding.")
                 self.node_dim = model_args["node_dim_stid"]
                 self.node_emb = nn.Parameter(torch.empty(self.num_nodes, self.node_dim))
                 nn.init.xavier_uniform_(self.node_emb)
 
-        ### <<< MODIFIED START: 性能提升 >>>
         # 将 node_indices 注册为 buffer，避免在 forward 中重复创建，提高效率。
         self.register_buffer('node_indices', torch.arange(self.num_nodes))
-        ### <<< MODIFIED END >>>
 
-        # ==================== 3. 时间嵌入模块 ====================
+        # ==================== 3. 时间嵌入模块 (与STID完全对齐) ====================
         self.temp_dim_tid = 0
         if self.if_time_in_day:
             self.temp_dim_tid = model_args["temp_dim_tid"]
-            self.time_in_day_emb = SinusoidalEncoding(self.temp_dim_tid, self.time_of_day_size)
+            # 使用可学习的参数，而不是确定性编码
+            self.time_in_day_emb = nn.Parameter(torch.empty(self.time_of_day_size, self.temp_dim_tid))
+            nn.init.xavier_uniform_(self.time_in_day_emb)
 
         self.temp_dim_diw = 0
         if self.if_day_in_week:
             self.temp_dim_diw = model_args["temp_dim_diw"]
-            self.day_in_week_emb = SinusoidalEncoding(self.temp_dim_diw, self.day_of_week_size)
+            # 使用可学习的参数，而不是确定性编码
+            self.day_in_week_emb = nn.Parameter(torch.empty(self.day_of_week_size, self.temp_dim_diw))
+            nn.init.xavier_uniform_(self.day_in_week_emb)
 
         # ==================== 4. 时间序列特征嵌入层 ====================
         self.time_series_emb_layer = nn.Conv2d(
             in_channels=self.input_dim * self.input_len, out_channels=self.embed_dim, kernel_size=(1, 1), bias=True)
 
         # ==================== 5. 编码器 (Encoder) ====================
+        # 计算编码器输入的总维度
         self.hidden_dim = self.embed_dim + self.node_dim + self.temp_dim_tid + self.temp_dim_diw
         self.encoder = nn.Sequential(
-            *[MultiLayerPerceptron(self.hidden_dim, self.hidden_dim) for _ in range(self.num_layer)])
+            *[MultiLayerPerceptron(self.hidden_dim, self.hidden_dim, self.dropout) for _ in range(self.num_layer)])
 
         # ==================== 6. 回归层 (Regression Head) ====================
         self.regression_layer = nn.Conv2d(
@@ -80,8 +88,10 @@ class DMID(nn.Module):
     def forward(self, history_data: torch.Tensor, future_data: torch.Tensor, batch_seen: int, epoch: int, train: bool,
                 **kwargs) -> torch.Tensor:
         """DMID的前向传播函数"""
+        # 步骤 1: 准备输入
         input_data = history_data[..., range(self.input_dim)]
         batch_size, _, num_nodes, _ = input_data.shape
+        device = input_data.device
 
         # 步骤 2: 时间序列特征嵌入
         input_data_flat = input_data.transpose(1, 2).contiguous().view(batch_size, num_nodes, -1).transpose(1,
@@ -94,7 +104,6 @@ class DMID(nn.Module):
         node_emb_list = []
         if self.if_spatial:
             if self.if_dmid_spatial:
-                # 使用注册为buffer的node_indices
                 spatial_embeddings = self.spatial_embedding_layer(self.node_indices)
                 node_emb_list.append(
                     spatial_embeddings.unsqueeze(0).expand(batch_size, -1, -1).transpose(1, 2).unsqueeze(-1))
@@ -102,25 +111,20 @@ class DMID(nn.Module):
                 node_emb_list.append(
                     self.node_emb.unsqueeze(0).expand(batch_size, -1, -1).transpose(1, 2).unsqueeze(-1))
 
-        # 3.2 时间嵌入
+        # 3.2 时间嵌入 (完全仿照STID的逻辑)
         tem_emb_list = []
         if self.if_time_in_day:
-            ### <<< MODIFIED START: 辅助修正 >>>
-            # 将使用最后一个时间点，改为使用整个输入窗口的平均时间特征，以获得更稳定的信号。
             t_i_d_data = history_data[..., 1]
-            # time_in_day_indices = (t_i_d_data[:, -1, :]).type(torch.LongTensor).to(device)
-            time_in_day_indices = t_i_d_data.mean(dim=1).type(torch.LongTensor)
-            ### <<< MODIFIED END >>>
-            tid_emb = self.time_in_day_emb(time_in_day_indices)
+            # STID论文中提到，时间戳被归一化到[0, 1]，因此需要乘以时间片总数得到索引。
+            time_in_day_indices = (t_i_d_data[:, -1, :] * (self.time_of_day_size - 1)).round().type(
+                torch.LongTensor).to(device)
+            tid_emb = self.time_in_day_emb[time_in_day_indices]
             tem_emb_list.append(tid_emb.transpose(1, 2).unsqueeze(-1))
 
         if self.if_day_in_week:
-            ### <<< MODIFIED START: 辅助修正 >>>
             d_i_w_data = history_data[..., 2]
-            # day_in_week_indices = (d_i_w_data[:, -1, :]).type(torch.LongTensor).to(device)
-            day_in_week_indices = d_i_w_data.mean(dim=1).type(torch.LongTensor)
-            ### <<< MODIFIED END >>>
-            diw_emb = self.day_in_week_emb(day_in_week_indices)
+            day_in_week_indices = (d_i_w_data[:, -1, :]).type(torch.LongTensor).to(device)
+            diw_emb = self.day_in_week_emb[day_in_week_indices]
             tem_emb_list.append(diw_emb.transpose(1, 2).unsqueeze(-1))
 
         # 步骤 4: 多源信息融合

@@ -6,9 +6,10 @@ class MultiLayerPerceptron(nn.Module):
     模块功能: 带残差连接的多层感知机(MLP)。
     设计方法: 该模块使用经典的MLP结构作为非线性特征提取器。
               为了构建更深的网络并缓解梯度消失问题，引入了来自ResNet的残差连接思想。
+              这种结构在STID和其衍生模型中被证明是简洁且有效的。
     """
 
-    def __init__(self, input_dim, hidden_dim) -> None:
+    def __init__(self, input_dim: int, hidden_dim: int, dropout: float = 0.15) -> None:
         """
         功能: 初始化MLP层。
         参数:
@@ -16,14 +17,14 @@ class MultiLayerPerceptron(nn.Module):
             hidden_dim (int): 隐藏层的维度 (也是输出维度，因为有残差连接)。
         """
         super().__init__()
-        # 第一个全连接层 (通过1x1卷积实现，高效处理[B, C, N, 1]形状的数据)
+        # 第一个全连接层 (通过1x1卷积实现，可以高效处理[B, C, N, 1]形状的四维数据)
         self.fc1 = nn.Conv2d(in_channels=input_dim, out_channels=hidden_dim, kernel_size=(1, 1), bias=True)
         # 第二个全连接层
         self.fc2 = nn.Conv2d(in_channels=hidden_dim, out_channels=hidden_dim, kernel_size=(1, 1), bias=True)
         # 激活函数
         self.act = nn.ReLU()
-        # Dropout层，防止过拟合
-        self.drop = nn.Dropout(p=0.15)
+        # Dropout层，用于在训练期间随机失活一部分神经元，以防止模型过拟合
+        self.drop = nn.Dropout(p=dropout)
 
     def forward(self, input_data: torch.Tensor) -> torch.Tensor:
         """
@@ -33,12 +34,10 @@ class MultiLayerPerceptron(nn.Module):
         返回:
             torch.Tensor: 经过MLP和残差连接后的输出张量，形状与输入相同。
         """
-        # 保存输入用于残差连接
+        # 保存输入用于最后的残差连接
         residual = input_data
-        # 通过第一个FC层、激活函数、Dropout层
-        hidden = self.drop(self.act(self.fc1(input_data)))
-        # 通过第二个FC层
-        hidden = self.fc2(hidden)
+        # 完整的前向传播路径: FC1 -> ReLU -> Dropout -> FC2
+        hidden = self.fc2(self.drop(self.act(self.fc1(input_data))))
         # 应用残差连接
         hidden = hidden + residual
         return hidden

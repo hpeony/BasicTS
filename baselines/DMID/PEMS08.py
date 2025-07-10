@@ -6,7 +6,7 @@ from basicts.metrics import masked_mae, masked_mape, masked_rmse
 from basicts.runners import SimpleTimeSeriesForecastingRunner
 from basicts.scaler import ZScoreScaler
 from basicts.utils import get_regular_settings
-# 导入新的模型架构
+# 导入我们重构后的模型架构
 from .arch import DMID
 
 ############################## Hot Parameters ##############################
@@ -27,31 +27,32 @@ MODEL_PARAM = {
     "num_nodes": 170,
     "input_len": INPUT_LEN,
     "input_dim": 3,
-    "embed_dim": 64,          # 时间序列特征嵌入维度
+    "embed_dim": 64,
     "output_len": OUTPUT_LEN,
     "num_layer": 3,
-    # 时间嵌入参数
+    # 时间嵌入参数 (与STID对齐，使用可学习参数)
     "if_T_i_D": True,
     "if_D_i_W": True,
+    "temp_dim_tid": 32,     # 16, 24, 32, 48, 64
+    "temp_dim_diw": 32,     # 16, 24, 32, 48, 64
     "time_of_day_size": 288,
     "day_of_week_size": 7,
-    "temp_dim_tid": 24,  # 一天中时刻的嵌入维度, 16, 24, 32
-    "temp_dim_diw": 24,  # 一周中日期的嵌入维度, 16, 24, 32
-    # 空间嵌入参数 (核心创新)
+    # 空间嵌入参数 (DMID核心创新与配置开关)
     "if_node": True,                           # 空间嵌入总开关
     "if_dmid_spatial": True,                   # **True: 开启DMID创新空间嵌入, False: 回退到STID原始嵌入**
-    "use_manifold_similarity": True,           # **True: 在相似性嵌入上使用流形学习, False: 使用普通欧氏空间嵌入**
-    "identity_dim": 32,                        # 确定性身份嵌入的维度, 16, 24, 32,
-    "similarity_dim": 32,                      # 可学习相似性嵌入的维度（投影前）, 24, 32, 64
+    "use_manifold_similarity": True,           # **True: 在相似性嵌入上使用流形学习(球面投影), False: 使用普通欧氏空间嵌入**
+    "identity_dim": 24,                        # 确定性身份嵌入(傅里叶特征)的维度, 16, 24, 32, 48
+    "similarity_dim": 48,                      # 可学习相似性嵌入的维度（投影前）, 24, 32, 40, 48, 64, 72
     "spatial_combination_method": 'gated_add',    # 嵌入组合方式: 'concat' 或 'gated_add'
-    # STID原始空间嵌入参数 (仅在 if_dmid_spatial 为 False 时生效)
+    # STID原始空间嵌入参数 (仅在 if_dmid_spatial=False 且 if_node=True 时生效)
     "node_dim_stid": 64,
+    "dropout": 0.1,
 }
 NUM_EPOCHS = 150
 
 ############################## General Configuration ##############################
 CFG = EasyDict()
-CFG.DESCRIPTION = 'DMID model on PEMS08'
+CFG.DESCRIPTION = 'Refactored DMID model with deterministic identity and manifold similarity on PEMS08'
 CFG.GPU_NUM = 1
 CFG.RUNNER = SimpleTimeSeriesForecastingRunner
 
@@ -104,7 +105,7 @@ CFG.TRAIN = EasyDict()
 CFG.TRAIN.NUM_EPOCHS = NUM_EPOCHS
 CFG.TRAIN.CKPT_SAVE_DIR = os.path.join(
     'checkpoints',
-    MODEL_ARCH.__name__,    # 使用新的模型名创建文件夹
+    MODEL_ARCH.__name__,
     '_'.join([DATA_NAME, str(CFG.TRAIN.NUM_EPOCHS), str(INPUT_LEN), str(OUTPUT_LEN)])
 )
 CFG.TRAIN.LOSS = masked_mae
@@ -113,22 +114,19 @@ CFG.TRAIN.OPTIM = EasyDict()
 CFG.TRAIN.OPTIM.TYPE = "Adam"
 CFG.TRAIN.OPTIM.PARAM = {
     "lr": 0.001,
-    "weight_decay": 0.0001
+    "weight_decay": 0.0003,
 }
 
 CFG.TRAIN.LR_SCHEDULER = EasyDict()
 CFG.TRAIN.LR_SCHEDULER.TYPE = "MultiStepLR"
 CFG.TRAIN.LR_SCHEDULER.PARAM = {
-    "milestones": [7, 18, 25, 70, 125],
-    "gamma": 0.5
+    "milestones": [7, 18, 25, 50, 80, 125],
+    "gamma": 0.75
 }
 
-CFG.TRAIN.CLIP_GRAD_PARAM = {
-    'max_norm': 5.0
-}
-
-# --- Early Stopping Strategy ---
-CFG.TRAIN.EARLY_STOPPING_PATIENCE = 20
+# CFG.TRAIN.CLIP_GRAD_PARAM = {
+#     'max_norm': 5.0
+# }
 
 CFG.TRAIN.DATA = EasyDict()
 CFG.TRAIN.DATA.BATCH_SIZE = 64
@@ -139,6 +137,7 @@ CFG.VAL = EasyDict()
 CFG.VAL.INTERVAL = 1
 CFG.VAL.DATA = EasyDict()
 CFG.VAL.DATA.BATCH_SIZE = 64
+
 CFG.TEST = EasyDict()
 CFG.TEST.INTERVAL = 1
 CFG.TEST.DATA = EasyDict()
