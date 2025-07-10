@@ -6,6 +6,8 @@ from basicts.metrics import masked_mae, masked_mape, masked_rmse
 from basicts.runners import SimpleTimeSeriesForecastingRunner
 from basicts.scaler import ZScoreScaler
 from basicts.utils import get_regular_settings
+from basicts.utils import CustomLRLambda
+
 # 导入我们重构后的模型架构
 from .arch import DMID
 
@@ -27,14 +29,14 @@ MODEL_PARAM = {
     "num_nodes": 170,
     "input_len": INPUT_LEN,
     "input_dim": 3,
-    "embed_dim": 64,
+    "embed_dim": 72,        # 64, 72, 96, 128
     "output_len": OUTPUT_LEN,
     "num_layer": 3,
     # 时间嵌入参数 (与STID对齐，使用可学习参数)
     "if_T_i_D": True,
     "if_D_i_W": True,
-    "temp_dim_tid": 32,     # 16, 24, 32, 48, 64
-    "temp_dim_diw": 32,     # 16, 24, 32, 48, 64
+    "temp_dim_tid": 24,     # 16, 24, 32, 48, 64
+    "temp_dim_diw": 24,     # 16, 24, 32, 48, 64
     "time_of_day_size": 288,
     "day_of_week_size": 7,
     # 空间嵌入参数 (DMID核心创新与配置开关)
@@ -42,11 +44,11 @@ MODEL_PARAM = {
     "if_dmid_spatial": True,                   # **True: 开启DMID创新空间嵌入, False: 回退到STID原始嵌入**
     "use_manifold_similarity": True,           # **True: 在相似性嵌入上使用流形学习(球面投影), False: 使用普通欧氏空间嵌入**
     "identity_dim": 24,                        # 确定性身份嵌入(傅里叶特征)的维度, 16, 24, 32, 48
-    "similarity_dim": 48,                      # 可学习相似性嵌入的维度（投影前）, 24, 32, 40, 48, 64, 72
+    "similarity_dim": 72,                      # 可学习相似性嵌入的维度（投影前）, 24, 32, 40, 48, 64, 72
     "spatial_combination_method": 'gated_add',    # 嵌入组合方式: 'concat' 或 'gated_add'
     # STID原始空间嵌入参数 (仅在 if_dmid_spatial=False 且 if_node=True 时生效)
     "node_dim_stid": 64,
-    "dropout": 0.1,
+    "dropout": 0.08,
 }
 NUM_EPOCHS = 150
 
@@ -120,9 +122,31 @@ CFG.TRAIN.OPTIM.PARAM = {
 CFG.TRAIN.LR_SCHEDULER = EasyDict()
 CFG.TRAIN.LR_SCHEDULER.TYPE = "MultiStepLR"
 CFG.TRAIN.LR_SCHEDULER.PARAM = {
-    "milestones": [7, 18, 25, 50, 80, 125],
-    "gamma": 0.75
+    # "milestones": [7, 18, 35, 58, 80, 125],
+    "milestones": [18, 55, 80, 125],
+    "gamma": 0.5
 }
+
+# Learning rate scheduler settings
+# --- 学习率调度器设置 (核心修改) ---
+# CFG.TRAIN.LR_SCHEDULER = EasyDict()
+# CFG.TRAIN.LR_SCHEDULER.TYPE = "LambdaLR"
+# # 学习率预热  起始 和 结束
+# lr_START = 1e-5/CFG.TRAIN.OPTIM.PARAM['lr']
+# lr_END = 0.001/CFG.TRAIN.OPTIM.PARAM['lr']
+# CFG.TRAIN.LR_SCHEDULER.PARAM = {
+#     # 不再调用 get_custom_lr_lambda 函数
+#     # 而是直接实例化我们创建的可 pickle 的类
+#     "lr_lambda": CustomLRLambda(
+#         warmup_epochs=5,
+#         # 注意: LambdaLR 的乘子是作用在 initial_lr 上的。
+#         # 如果你的 warmup 想从 1e-5 到 0.001，那么乘子应该是 1e-5/0.001 = 0.01 和 0.001/0.001 = 1.0
+#         warmup_lrs=(lr_START, lr_END),
+#         decay_epochs=[13, 19, 40, 75, 100, 120, 130, 140],
+#         decay_gamma=0.5
+#     )
+# }
+
 
 # CFG.TRAIN.CLIP_GRAD_PARAM = {
 #     'max_norm': 5.0

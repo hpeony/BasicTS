@@ -2,8 +2,9 @@ import torch
 from torch import nn
 
 # 引用同目录下的模块
-from .mlp import MultiLayerPerceptron
+from .mlp import GatedMLP
 from .embed import SpatialEmbedding
+from .optimized_regression import OptimizedRegressionHead
 
 
 class DMID(nn.Module):
@@ -79,11 +80,15 @@ class DMID(nn.Module):
         # 计算编码器输入的总维度
         self.hidden_dim = self.embed_dim + self.node_dim + self.temp_dim_tid + self.temp_dim_diw
         self.encoder = nn.Sequential(
-            *[MultiLayerPerceptron(self.hidden_dim, self.hidden_dim, self.dropout) for _ in range(self.num_layer)])
+            *[GatedMLP(self.hidden_dim, self.hidden_dim, self.dropout) for _ in range(self.num_layer)])
 
         # ==================== 6. 回归层 (Regression Head) ====================
-        self.regression_layer = nn.Conv2d(
-            in_channels=self.hidden_dim, out_channels=self.output_len, kernel_size=(1, 1), bias=True)
+        self.regression_layer = OptimizedRegressionHead(
+            hidden_dim=self.hidden_dim,  # 输入特征维度
+            output_len=self.output_len,  # 要预测的时间步数
+            num_nodes=self.num_nodes,  # 节点数量，内部可能用于批处理或特定层
+            dropout=self.dropout
+        )
 
     def forward(self, history_data: torch.Tensor, future_data: torch.Tensor, batch_seen: int, epoch: int, train: bool,
                 **kwargs) -> torch.Tensor:
@@ -94,9 +99,9 @@ class DMID(nn.Module):
         device = input_data.device
 
         # 步骤 2: 时间序列特征嵌入
-        input_data_flat = input_data.transpose(1, 2).contiguous().view(batch_size, num_nodes, -1).transpose(1,
-                                                                                                            2).unsqueeze(
-            -1)
+        input_data_flat = (input_data.transpose(1, 2)
+                           .contiguous().view(batch_size, num_nodes, -1)
+                           .transpose(1, 2).unsqueeze(-1))
         time_series_emb = self.time_series_emb_layer(input_data_flat)
 
         # 步骤 3: 准备时空ID嵌入
@@ -134,6 +139,8 @@ class DMID(nn.Module):
         hidden = self.encoder(hidden)
 
         # 步骤 6: 通过回归层生成最终预测
+        # The new regression_layer (OptimizedRegressionHead) expects the same input shape.
+        # prediction shape: (batch_size, output_len, num_nodes, 1)
         prediction = self.regression_layer(hidden)
 
         return prediction
