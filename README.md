@@ -1,7 +1,7 @@
 <div align="center">
   <img src="assets/Basic-TS-logo-for-white.png#gh-light-mode-only" height=200>
   <img src="assets/Basic-TS-logo-for-black.png#gh-dark-mode-only" height=200>
-  <h3><b> A Fair and Scalable Time Series Forecasting Benchmark and Toolkit. </b></h3>
+  <h3><b> A Fair and Scalable Time Series Analysis Benchmark and Toolkit. </b></h3>
 </div>
 
 <div align="center">
@@ -25,28 +25,34 @@
 
 <div align="center">
 
-🎉 [**Getting Started**](./tutorial/getting_started.md) **|**
-💡 [**Overall Design**](./tutorial/overall_design.md)
+🎉 [**Getting Started**](./docs/getting_started.md) **|**
+💡 [**Overall Design**](./docs/overall_design.md)
 
-📦 [**Dataset**](./tutorial/dataset_design.md) **|**
-🛠️ [**Scaler**](./tutorial/scaler_design.md) **|**
-🧠 [**Model**](./tutorial/model_design.md) **|**
-📉 [**Metrics**](./tutorial/metrics_design.md) **|**
-🏃‍♂️ [**Runner**](./tutorial/runner_design.md) **|**
-📜 [**Config**](./tutorial/config_design.md.md) **|**
-📜 [**Baselines**](./baselines/)
+📦 [**Dataset**](./docs/dataset_design.md) **|**
+🛠️ [**Scaler**](./docs/scaler_design.md) **|**
+🧠 [**Model**](./docs/model_design.md) **|**
+📉 [**Metrics**](./docs/metrics_design.md) **|**
+🏃‍♂️ [**Runner**](./docs/runner_and_pipeline.md) **|**
+📜 [**Config**](./docs/config_design.md) **|**
+📜 [**Baselines**](./src/basicts/models/)
 
 </div>
 
-$\text{BasicTS}^{+}$ (**Basic** **T**ime **S**eries) is a benchmark library and toolkit designed for time series forecasting. It now supports a wide range of tasks and datasets, including spatial-temporal forecasting and long-term time series forecasting. It covers various types of algorithms such as statistical models, machine learning models, and deep learning models, making it an ideal tool for developing and evaluating time series forecasting models.
+BasicTS (**Basic** **T**ime **S**eries) is a benchmark library and toolkit designed for time series analysis. It now supports a wide range of tasks and datasets such as spatial-temporal forecasting, long-term time series forecasting, classification, and imputation. It covers various types of algorithms such as statistical models, machine learning models, and deep learning models, making it an ideal tool for developing and evaluating time series analysis models. You can find detailed tutorials in [Getting Started](./docs/getting_started.md).
+
+## 📢 Latest Updates
+
+🎉 **Update (Oct 2025)**: BasicTS now has built-in support for [**Selective Learning (NeurIPS'25)**](http://arxiv.org/abs/2510.25207), an effective training strategy to mitigate overfitting and enhance model performance and generalization. Users can import and use it directly from the [callback module](./src/basicts/runners/callback/selective_learning.py). [Usage Guide](https://github.com/GestaltCogTeam/selective-learning)
+
+🎉 **Update (Oct 2025): BasicTS version 1.0 is released! New Features:**
+  - 🚀 **Quick Start with Three Lines of Code**: Install via pip, minimal API design for rapid model training and evaluation.
+  - 📦 **Modular Components, Ready to Use**: Provides plug-and-play components like Transformers and MLPs, allowing you to build your own model like building blocks.
+  - 🔄 **Multi-Task Support**: Natively supports core tasks in time series analysis, including forecasting, classification, and imputation.
+  - 🔧 **Highly Extensible Architecture**: Based on Taskflow and Callback mechanisms, enabling easy customization without modifying the Runner.
+
+🎉 **Update (May 2025):** BasicTS now supports training universal forecasting models (e.g., **TimeMoE** and **ChronosBolt**) using the [**BLAST (KDD'25)**](https://arxiv.org/abs/2505.17871) corpus. BLAST enables **faster convergence**, **significantly reduced computational costs**, and achieves superior performance even with limited resources.
 
 If you find this project helpful, please don't forget to give it a ⭐ Star to show your support. Thank you!
-
-On one hand, BasicTS provides a **unified and standardized pipeline**, offering a **fair and comprehensive** platform for reproducing and comparing popular models.
-
-On the other hand, BasicTS offers a **user-friendly and easily extensible** interface, enabling quick design and evaluation of new models. Users can simply define their model structure and easily perform basic operations.
-
-You can find detailed tutorials in [Getting Started](./tutorial/getting_started.md). Additionally, we are collecting **ToDo** and **HowTo** items. If you need more features (e.g., additional datasets or benchmark models) or tutorials, feel free to open an issue or leave a comment [here](https://github.com/zezhishao/BasicTS/issues/95).
 
 > [!IMPORTANT]
 > If you find this repository helpful for your work, please consider citing the following benchmarking paper:
@@ -67,6 +73,10 @@ You can find detailed tutorials in [Getting Started](./tutorial/getting_started.
 > 🔥🔥🔥 ***The paper has been accepted by IEEE TKDE! You can check it out [here](https://arxiv.org/abs/2310.06119).***  🔥🔥🔥
 
 ## ✨ Highlighted Features
+
+On one hand, BasicTS provides a **unified and standardized pipeline**, offering a **fair and comprehensive** platform for reproducing and comparing popular models.
+
+On the other hand, BasicTS offers a **user-friendly and easily extensible** interface, enabling quick design and evaluation of new models. Users can simply define their model structure and easily perform basic operations.
 
 ### Fair Performance Review
 
@@ -96,21 +106,35 @@ Support `logging` log system and `Tensorboard`, and encapsulate it as a unified 
 
 ## 🚀 Installation and Quick Start
 
-For detailed instructions, please refer to the [Getting Started](./tutorial/getting_started.md) tutorial.
+For detailed instructions, please refer to the [Getting Started](./docs/getting_started.md) tutorial.
 
 ## 📦 Supported Baselines
 
-BasicTS implements a wealth of models, including ***classic models***, ***spatial-temporal forecasting*** models, and ***long-term time series forecasting*** model:
+BasicTS implements a wealth of models, including ***classic models***, ***spatial-temporal forecasting*** models, and ***long-term time series forecasting*** model, and **universal forecasting models**.
 
 You can find the implementation of these models in the [baselines](./baselines) directory.
 
 The code links (💻Code) in the table below point to the official implementations from these papers. Many thanks to the authors for open-sourcing their work!
 
 <details open>
+  <summary><h3>Universal Forecasting Models</h3></summary>
+
+| 📊Baseline | 📝Title                                                                                                              | 📄Paper                                              | 💻Code                                                                                                                                 | 🏛Venue     | 🎯Task |
+| :--------- | :------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------- | :----- |
+| TimeMoE | Time-MoE: Billion-Scale Time Series Foundation Models with Mixture of Experts | [Link](https://openreview.net/forum?id=e1wDDFmlVu) | [Link](https://github.com/Time-MoE/Time-MoE) | ICLR'25 | UFM |
+| ChronosBolt | Chronos: Learning the Language of Time Series | [Link](https://arxiv.org/abs/2403.07815) | [Link](https://github.com/amazon-science/chronos-forecasting) | TMLR'24 | UFM |
+MOIRAI (inference) | Unified Training of Universal Time Series Forecasting Transformers  | [Link](https://arxiv.org/abs/2402.02592) | [Link](https://github.com/SalesforceAIResearch/uni2ts) | ICML'24 | UFM |
+</details>
+
+<details open>
   <summary><h3>Spatial-Temporal Forecasting</h3></summary>
 
 | 📊Baseline | 📝Title                                                                                                              | 📄Paper                                              | 💻Code                                                                                                                                                                                        | 🏛Venue     | 🎯Task |
 | :--------- | :------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------- | :----- |
+| STDN       | Spatiotemporal-aware Trend-Seasonality Decomposition Network for Traffic Flow Forecasting                            | [Link](https://ojs.aaai.org/index.php/AAAI/article/view/33247)   | [Link](https://github.com/roarer008/STDN)                                                                                                                                               | AAAI'25     | STF    |
+| HimNet     | Heterogeneity-Informed Meta-Parameter Learning for Spatiotemporal Time Series Forecasting                            | [Link](https://arxiv.org/abs/2405.10800)                | [Link](https://github.com/XDZhelheim/HimNet)                                                                                                                                                     | SIGKDD'24   | STF    |
+| DFDGCN     | Dynamic Frequency Domain Graph Convolutional Network for Traffic Forecasting                                         | [Link](https://arxiv.org/abs/2312.11933) | [Link](https://github.com/GestaltCogTeam/DFDGCN)                                                                                                                                                    | ICASSP'24   | STF    |
+| STPGNN     | Spatio-Temporal Pivotal Graph Neural Networks for Trafﬁc Flow Forecasting                                            | [Link](https://ojs.aaai.org/index.php/AAAI/article/view/28707) | [Link](https://github.com/Kongwy5689/STPGNN?tab=readme-ov-file)                                                                                                                           | AAAI'24     | STF    |
 | BigST      | Linear Complexity Spatio-Temporal Graph Neural Network for Traffic Forecasting on Large-Scale Road Networks          | [Link](https://dl.acm.org/doi/10.14778/3641204.3641217) | [Link](https://github.com/usail-hkust/BigST?tab=readme-ov-file)                                                                                                                                  | VLDB'24     | STF    |
 | STDMAE     | Spatio-Temporal-Decoupled Masked Pre-training for Traffic Forecasting                                                | [Link](https://arxiv.org/abs/2312.00516)                | [Link](https://github.com/Jimmy-7664/STD-MAE)                                                                                                                                                    | IJCAI'24    | STF    |
 | STWave     | When Spatio-Temporal Meet Wavelets: Disentangled Traffic Forecasting via Efficient Spectral Graph Attention Networks | [Link](https://ieeexplore.ieee.org/document/10184591)   | [Link](https://github.com/LMissher/STWave)                                                                                                                                                       | ICDE'23     | STF    |
@@ -137,6 +161,11 @@ The code links (💻Code) in the table below point to the official implementatio
 
 | 📊Baseline    | 📝Title                                                                                                  | 📄Paper                                                | 💻Code                                                                        | 🏛Venue    | 🎯Task |
 | :------------ | :------------------------------------------------------------------------------------------------------- | :----------------------------------------------------- | :---------------------------------------------------------------------------- | :--------- | :----- |
+| S-D-Mamba         | Is Mamba Effective for Time Series Forecasting?                           | [Link](https://arxiv.org/abs/2403.11144v3)                  | [Link](https://github.com/wzhwzhwzh0921/S-D-Mamba)                                        | NeuroComputing'24 | LTSF   |
+| Bi-Mamba         | Bi-Mamba+: Bidirectional Mamba for Time Series Forecasting                           | [Link](https://arxiv.org/abs/2404.15772)                  | [Link](https://github.com/Leopold2333/Bi-Mamba4TS)                                        | arXiv'24 | LTSF   |
+| ModernTCN         | ModernTCN: A Modern Pure Convolution Structure for General Time Series Analysis                           | [Link](https://openreview.net/forum?id=vpJMJerXHU)                  | [Link](https://github.com/luodhhh/ModernTCN)                                        | ICLR'24 | LTSF   |
+| TimeXer         | TimeXer: Empowering Transformers for Time Series Forecasting with Exogenous Variables                           | [Link](https://arxiv.org/abs/2402.19072)                  | [Link](https://github.com/thuml/TimeXer)                                        | NeurIPS'24 | LTSF   |
+| CARD         | CARD: Channel Aligned Robust Blend Transformer for Time Series Forecasting                           | [Link](https://arxiv.org/abs/2305.12095)                  | [Link](https://github.com/wxie9/CARD)                                        | ICLR'24 | LTSF   |
 | SOFTS         | SOFTS: Efficient Multivariate Time Series Forecasting with Series-Core Fusion                           | [Link](https://arxiv.org/pdf/2404.14197)                  | [Link](https://github.com/Secilia-Cxy/SOFTS)                                        | NeurIPS'24 | LTSF   |
 | CATS          | Are Self-Attentions Effective for Time Series Forecasting?                                               | [Link](https://arxiv.org/pdf/2405.16877)                  | [Link](https://github.com/dongbeank/CATS)                                        | NeurIPS'24 | LTSF   |
 | Sumba         | Structured Matrix Basis for Multivariate Time Series Forecasting with Interpretable Dynamics             | [Link](https://xiucheng.org/assets/pdfs/nips24-sumba.pdf) | [Link](https://github.com/chenxiaodanhit/Sumba/)                                 | NeurIPS'24 | LTSF   |
@@ -161,6 +190,7 @@ The code links (💻Code) in the table below point to the official implementatio
 | NHiTS         | Neural Hierarchical Interpolation for Time Series Forecasting                                            | [Link](https://arxiv.org/abs/2201.12886)                  | [Link](https://github.com/cchallu/n-hits)                                        | AAAI'23    | LTSF   |
 | PatchTST      | A Time Series is Worth 64 Words: Long-term Forecasting with Transformers                                 | [Link](https://arxiv.org/abs/2211.14730)                  | [Link](https://github.com/yuqinie98/PatchTST)                                    | ICLR'23    | LTSF   |
 | TiDE          | Long-term Forecasting with TiDE: Time-series Dense Encoder                                               | [Link](https://arxiv.org/abs/2304.08424)                  | [Link](https://github.com/lich99/TiDE)                                           | TMLR'23    | LTSF   |
+| S4         | Efficiently Modeling Long Sequences with Structured State Spaces                           | [Link](https://openreview.net/pdf?id=uYLFoz1vlAC)                  | [Link](https://github.com/state-spaces/s4)                                        | ICLR'22 | LTSF   |
 | TimesNet      | Temporal 2D-Variation Modeling for General Time Series Analysis                                          | [Link](https://openreview.net/pdf?id=ju_Uqw384Oq)         | [Link](https://github.com/thuml/TimesNet)                                        | ICLR'23    | LTSF   |
 | Triformer     | Triangular, Variable-Specific Attentions for Long Sequence Multivariate Time Series Forecasting          | [Link](https://arxiv.org/abs/2204.13767)                  | [Link](https://github.com/razvanc92/triformer)                                   | IJCAI'22   | LTSF   |
 | NSformer      | Exploring the Stationarity in Time Series Forecasting                                                    | [Link](https://arxiv.org/abs/2205.14415)                  | [Link](https://github.com/thuml/Nonstationary_Transformers)                      | NeurIPS'22 | LTSF   |
@@ -178,10 +208,23 @@ The code links (💻Code) in the table below point to the official implementatio
 
 | 📊Baseline | 📝Title                                                                   | 📄Paper                                                                                        | 💻Code                                                                                                                                                 | 🏛Venue             | 🎯Task                                |
 | :--------- | :------------------------------------------------------------------------ | :--------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------ | :------------------------------------ |
+| CatBoost   | Catboost: unbiased boosting with categorical features              | [Link](https://proceedings.neurips.cc/paper_files/paper/2018/file/14491b756b3a51daac41c24863285549-Paper.pdf) | [Link](https://github.com/catboost/catboost)                                                                                                             | NeurIPS'18          | Machine Learning                      |
 | LightGBM   | LightGBM: A Highly Efficient Gradient Boosting Decision Tree              | [Link](https://proceedings.neurips.cc/paper/2017/file/6449f44a102fde848669bdd9eb6b76fa-Paper.pdf) | [Link](https://github.com/microsoft/LightGBM)                                                                                                             | NeurIPS'17          | Machine Learning                      |
 | NBeats     | Neural basis expansion analysis for interpretable time series forecasting | [Link](https://arxiv.org/abs/1905.10437)                                                          | [Link1](https://github.com/ServiceNow/N-BEATS), [Link2](https://github.com/philipperemy/n-beats)                                                             | ICLR'19             | Deep Time Series Forecasting          |
 | DeepAR     | Probabilistic Forecasting with Autoregressive Recurrent Networks          | [Link](https://arxiv.org/abs/1704.04110)                                                          | [Link1](https://github.com/jingw2/demand_forecast), [Link2](https://github.com/husnejahan/DeepAR-pytorch), [Link3](https://github.com/arrigonialberto86/deepar) | Int. J. Forecast'20 | Probabilistic Time Series Forecasting |
 | WaveNet    | WaveNet: A Generative Model for Raw Audio.                                | [Link](https://arxiv.org/abs/1609.03499)                                                          | [Link 1](https://github.com/JLDeng/ST-Norm/blob/master/models/Wavenet.py), [Link 2](https://github.com/huyouare/WaveNet-Theano)                              | arXiv               | Audio                                 |
+| AR   | VII. On a method of investigating periodicities disturbed series, with special reference to Wolfer's sunspot numbers              | [Link](https://royalsocietypublishing.org/doi/abs/10.1098/rsta.1927.0007) | [Link](https://alkaline-ml.com/pmdarima/modules/generated/pmdarima.arima.auto_arima.html)                                                                                                             | 1927          | Local Forecasting                      |
+| MA   | On periodicity in series of related terms              | [Link](https://royalsocietypublishing.org/doi/10.1098/rspa.1931.0069) | [Link](https://alkaline-ml.com/pmdarima/modules/generated/pmdarima.arima.auto_arima.html)                                                                                                             | 1931          | Local Forecasting                      |
+| ARMA   | Some recent advances in forecasting and control              | [Link](https://www.jstor.org/stable/2985674) | [Link](https://alkaline-ml.com/pmdarima/modules/generated/pmdarima.arima.auto_arima.html)                                                                                                             | Applied Statistics'1968         | Local Forecasting                      |
+| ARIMA   | Forecasting with exponential smoothing: the state space approach             | [Link](https://link.springer.com/chapter/10.1007/978-3-540-71918-2_12) | [Link](https://alkaline-ml.com/pmdarima/modules/generated/pmdarima.arima.auto_arima.html)                                                                                                             | 2008         | Local Forecasting                      |
+| SARIMA   | Forecasting with exponential smoothing: the state space approach              | [Link](https://link.springer.com/chapter/10.1007/978-3-540-71918-2_12) | [Link](https://alkaline-ml.com/pmdarima/modules/generated/pmdarima.arima.auto_arima.html)                                                                                                             | 2008         | Local Forecasting                      |
+| ARCH   | Conditional heteroscedasticity in time series of stock returns: Evidence and forecasts              | [Link](https://www.jstor.org/stable/2353123) | [Link](https://pypi.org/project/arch/)                                                                                                             | Journal of business'1989         | Local Forecasting                      |
+| GARCH   | Conditional heteroscedasticity in time series of stock returns: Evidence and forecasts               | [Link](https://www.jstor.org/stable/2353123) | [Link](https://pypi.org/project/arch/)                                                                                                             | Journal of business'1989         | Local Forecasting                      |
+| ETS   | The holt-winters forecasting procedure              | [Link](https://www.jstor.org/stable/2347162) | [Link](https://www.statsmodels.org/stable/generated/statsmodels.tsa.holtwinters.ExponentialSmoothing.html)                                                                                                             | Applied Statistics'1978          | Local Forecasting                    |
+| SES   | The holt-winters forecasting procedure              | [Link](https://www.jstor.org/stable/2347162) | [Link](https://www.statsmodels.org/stable/generated/statsmodels.tsa.holtwinters.SimpleExpSmoothing.html)                                                                                                             | Applied Statistics'1978          | Local Forecasting                    |
+| SVR   | Support vector regression machines              | [Link](https://proceedings.neurips.cc/paper_files/paper/1996/file/d38901788c533e8286cb6400b40b386d-Paper.pdf) | [Link](https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVR.html)                                                                                                             | NeurIPS'1996          | Machine Learning                      |
+| PolySVR  | A training algorithm for optimal margin classifiers              | [Link](https://dl.acm.org/doi/abs/10.1145/130385.130401)| [Link](https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVR.html)                                                                                                             | COLT'1992          | Machine Learning                      |
+
 
 </details>
 
@@ -233,6 +276,15 @@ BasicTS support a variety of datasets, including ***spatial-temporal forecasting
 
 </details>
 
+<details open>
+  <summary><h3>Pre-training Corpus</h3></summary>
+
+| 🏷️Name | 🌐Domain     | 📏Length | 📊Time Series Count | 🔄Graph | ⏱️Freq. | 🎯Task      |
+| :------- | :----------- | -------: | ------------------: | :------ | ------------: | :---------- |
+|   [BLAST](https://github.com/GestaltCogTeam/BasicTS/blob/master/docs/training_with_BLAST.md)  |  Multiple |     4096 |      20000000       | False  |   Multiple  |     UFM     |
+
+</details>
+
 ## 📉 Main Results
 
 See the paper *[Exploring Progress in Multivariate Time Series Forecasting:
@@ -278,9 +330,9 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
 
 This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
 
-## ⭐ Star History
+<!-- ## ⭐ Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=GestaltCogTeam/BasicTS&type=Date)](https://star-history.com/#GestaltCogTeam/BasicTS&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=GestaltCogTeam/BasicTS&type=Date)](https://star-history.com/#GestaltCogTeam/BasicTS&Date) -->
 
 ## 🔗 Acknowledgement
 

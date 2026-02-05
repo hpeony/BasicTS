@@ -8,11 +8,11 @@
 [MASTER]
 
 # Files or directories to be skipped. They should be base names, not paths.
-ignore=baselines,assets,checkpoints
+ignore=baselines,assets,checkpoints,examples,scripts
 
 # Files or directories matching the regex patterns are skipped. The regex
 # matches against base names, not paths.
-ignore-patterns=^\.|^_|^.*\.md|^.*\.txt|^.*\.CFF|^LICENSE
+ignore-patterns=^\.|^_|^.*\.md|^.*\.txt|^.*\.csv|^.*\.CFF|^LICENSE|^.*\.toml
 
 # Pickle collected data for later comparisons.
 persistent=no
